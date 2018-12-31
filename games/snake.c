@@ -1,18 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include<windows.h>
 #include <conio.h>
-#define N 20 // µØÍ¼´óĞ¡
-int map[N][N]; //µØÍ¼ 
-int head, tail; //Í·Î² 
-int direction; // ·½Ïò 
-int egg; //µ°µÄÎ»ÖÃ
-void move (); //ÒÆ¶¯ 
-int detection (); // ¼ì²â 
-void new_egg (); //´´½¨µ° 
-void print (); //´òÓ¡ 
-void initialize (); //³õÊ¼»¯ 
-int reverse(); // µ±Ç°·½ÏòµÄ·´Ïò 
+#define N 20 // åœ°å›¾å¤§å°
+int map[N][N]; //åœ°å›¾ 
+int head, tail; //å¤´å°¾ 
+int direction; // æ–¹å‘ 
+int egg; //è›‹çš„ä½ç½®
+void move (); //ç§»åŠ¨ 
+int detection (); // æ£€æµ‹ 
+void new_egg (); //åˆ›å»ºè›‹ 
+void print (); //æ‰“å° 
+void initialize (); //åˆå§‹åŒ– 
+int reverse(); // å½“å‰æ–¹å‘çš„åå‘ 
 void move () {
 	int  t = detection();
 	if(t == -1){
