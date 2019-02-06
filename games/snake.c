@@ -20,6 +20,7 @@ void move () {
 		printf("%d\n", head - 1);
 		printf("game over!\n");
 		getchar();
+		main();
 		exit(0);
 	}
 	else if(t == 1){
