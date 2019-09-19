@@ -1,0 +1,8 @@
+".\Objects\STARTUP.obj",
+".\Objects\Commands.obj",
+".\Objects\Helper.obj",
+".\Objects\main.obj",
+".\Objects\Terminal.obj",
+".\Objects\Uart.obj" 
+TO ".\Objects\terminal" 
+PRINT(".\Listings\terminal.m51") RAMSIZE(256) 

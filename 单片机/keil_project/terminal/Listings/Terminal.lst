@@ -1,0 +1,438 @@
+C51 COMPILER V9.00   TERMINAL                                                              09/16/2019 22:21:39 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE TERMINAL
+OBJECT MODULE PLACED IN .\Objects\Terminal.obj
+COMPILER INVOKED BY: D:\Keil_v5\C51\BIN\C51.EXE Terminal.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\
+                    -Terminal.lst) TABS(2) OBJECT(.\Objects\Terminal.obj)
+
+line level    source
+
+   1          #include "Terminal.h"
+   2          #include "Commands.h"
+   3          /*****************************************************************************/
+   4          char idata SerialBuffer[MAX_SERIAL_BUFFER_SIZE];
+   5          char idata VTCmdBuffer[MAX_VT_COMMAND_BUFFER_SIZE];//
+   6          char code PromptBuffer[]=">";
+   7          char idata CursorPosion;/* 命令行输入缓冲区指针 */
+   8          char idata VTCursorPosion;/* VT命令缓冲区指针 */
+   9          char idata ExecCommandFlag;/* 执行命令标志 */
+  10          char idata VTControlModeFlag;/* VT控制模式 */
+  11          /*****************************************************************************/
+  12          /* 开机初始化 */
+  13          void InitTerminal(void)
+  14          {
+  15   1        CursorPosion = 0;
+  16   1        ExecCommandFlag = 0;
+  17   1        VTControlModeFlag = 0;
+  18   1        SendStr(DEFAULT_F_COLOR);
+  19   1        SendStr(DEFAULT_B_COLOR);
+  20   1        SendStr(CLEARSCREEN);
+  21   1        SendStr(CURSORHOME);
+  22   1        memset(SerialBuffer,'\0',MAX_SERIAL_BUFFER_SIZE);
+  23   1        memset(VTCmdBuffer,'\0',MAX_VT_COMMAND_BUFFER_SIZE);
+  24   1        SendLine("*****************************");
+  25   1        SendLine("*****************************");
+  26   1        SendStr("\r\n");
+  27   1        SendStr2(PromptBuffer,PROMPT_F_COLOR,DEFAULT_B_COLOR);
+  28   1      }
+  29          
+  30          /* VT输入 */
+  31          void VTInput(unsigned char sbuftemp)
+  32          {
+  33   1        int argv[]={0,0,0,0,0,0,0,0};//其实vt参数最多3个
+  34   1        int argc=0;
+  35   1        int i;
+  36   1        //在VT里面英文字母表示结束,0x24 + "[" 表示开始
+  37   1        switch(sbuftemp)
+  38   1        {
+  39   2        case 'a':
+  40   2        case 'b':
+  41   2        case 'c':
+  42   2        case 'd':
+  43   2        case 'e':
+  44   2        case 'f':
+  45   2        case 'g':
+  46   2        case 'h':
+  47   2        case 'i':
+  48   2        case 'j':
+  49   2        case 'k':
+  50   2        case 'l':
+  51   2        case 'm':
+  52   2        case 'n':
+  53   2        case 'o':
+  54   2        case 'p':
+C51 COMPILER V9.00   TERMINAL                                                              09/16/2019 22:21:39 PAGE 2   
+
+  55   2        case 'q':
+  56   2        case 'r':
+  57   2        case 's':
+  58   2        case 't':
+  59   2        case 'u':
+  60   2        case 'v':
+  61   2        case 'w':
+  62   2        case 'x':
+  63   2        case 'y':
+  64   2        case 'z':
+  65   2        case 'A':
+  66   2        case 'B':
+  67   2        case 'C':
+  68   2        case 'D':
+  69   2        case 'E':
+  70   2        case 'F':
+  71   2        case 'G':
+  72   2        case 'H':
+  73   2        case 'I':
+  74   2        case 'J':
+  75   2        case 'K':
+  76   2        case 'L':
+  77   2        case 'M':
+  78   2        case 'N':
+  79   2        case 'O':
+  80   2        case 'P':
+  81   2        case 'Q':
+  82   2        case 'R':
+  83   2        case 'S':
+  84   2        case 'T':
+  85   2        case 'U':
+  86   2        case 'V':
+  87   2        case 'W':
+  88   2        case 'X':
+  89   2        case 'Y':
+  90   2        case 'Z':
+  91   2        case '~':
+  92   2          VTControlModeFlag=0;
+  93   2        default:
+  94   2          //如果输入的VT参数过长.强行退出VT模式
+  95   2          if(VTCursorPosion >= MAX_VT_COMMAND_BUFFER_SIZE)
+  96   2          {
+  97   3            VTCursorPosion = 0;
+  98   3            VTControlModeFlag = 0;
+  99   3            break;
+ 100   3          }
+ 101   2          
+ 102   2          VTCmdBuffer[VTCursorPosion] = sbuftemp;
+ 103   2          VTCursorPosion++;
+ 104   2          break;
+ 105   2        }
+ 106   1        //如果VT模式还没结束则暂时不做后面的处理
+ 107   1        if(VTControlModeFlag!=0||VTCursorPosion<=0)return;
+ 108   1        
+ 109   1        //判断语法是否正确
+ 110   1        if(VTCmdBuffer[0]!='[')
+ 111   1        {
+ 112   2           VTCursorPosion=0;
+ 113   2          memset(VTCmdBuffer,'\0',MAX_VT_COMMAND_BUFFER_SIZE);
+ 114   2          return;
+ 115   2        }
+ 116   1        //判断是否有参数,如有则对其解析
+C51 COMPILER V9.00   TERMINAL                                                              09/16/2019 22:21:39 PAGE 3   
+
+ 117   1        if(VTCursorPosion>2)
+ 118   1        {
+ 119   2          for (i = 1; i < VTCursorPosion; i++)
+ 120   2          {
+ 121   3            if (VTCmdBuffer[i]==';'||VTCmdBuffer[i]==',')
+ 122   3            {
+ 123   4              argc++;
+ 124   4              continue;
+ 125   4            }
+ 126   3            if(VTCmdBuffer[i]>=0x30&&VTCmdBuffer[i]<=0x39)
+ 127   3            {
+ 128   4              argv[argc]=(argv[argc]*10)+(VTCmdBuffer[i]-0x30);
+ 129   4              continue;
+ 130   4            }
+ 131   3            
+ 132   3            if (i==VTCursorPosion-1)
+ 133   3            {
+ 134   4              argc++;
+ 135   4              continue;
+ 136   4            }
+ 137   3          }
+ 138   2        }
+ 139   1        //SendLine(VTCmdBuffer);
+ 140   1        //执行VT命令
+ 141   1        switch(VTCmdBuffer[VTCursorPosion-1])
+ 142   1        {
+ 143   2          case 'D'://光标左移
+ 144   2            if(CursorPosion > 0)
+ 145   2            {
+ 146   3              CursorPosion--;
+ 147   3              SendByte(0x08);
+ 148   3            }
+ 149   2            break;
+ 150   2          case 'C'://光标右移
+ 151   2            if(SerialBuffer[CursorPosion] != '\0')
+ 152   2            {
+ 153   3              CursorPosion++;
+ 154   3              SendStr("\033[C");
+ 155   3            }
+ 156   2            break;
+ 157   2          case '~'://按键信息
+ 158   2            if(argc==1)
+ 159   2            {
+ 160   3              if(argv[0]==1)//Home
+ 161   3              {
+ 162   4                //if(SerialBuffer[CursorPosion] == 0)break;
+ 163   4                SendStr("\033[");
+ 164   4                SendUInt(CursorPosion);
+ 165   4                SendStr("D");
+ 166   4                CursorPosion=0;
+ 167   4                break;
+ 168   4              }
+ 169   3              if(argv[0]==3)//Delete
+ 170   3              {
+ 171   4                if(SerialBuffer[CursorPosion] == 0)break;
+ 172   4                //记录下游标位置,然后内容前移,恢复游标位置
+ 173   4                SendStr(SAVECURSOR);
+ 174   4                //在内存里输出光标后的内容,此时会覆盖光标里的字,相当于原地删除了
+ 175   4                SendStr(&SerialBuffer[CursorPosion+1]);
+ 176   4                SendByte(0x20);//在末尾输出个空格,覆盖末尾的字留下的残影.
+ 177   4                SendStr(RESTORECURSOR);//恢复光标位置
+ 178   4                //在内存里把光标后面的内容全部往前移一格(包括末尾的\0)
+C51 COMPILER V9.00   TERMINAL                                                              09/16/2019 22:21:39 PAGE 4   
+
+ 179   4                for (i = CursorPosion; i < strlen(SerialBuffer); i++)SerialBuffer[i]=SerialBuffer[i+1];
+ 180   4                break;
+ 181   4              }
+ 182   3              if(argv[0]==4)//End
+ 183   3              {
+ 184   4                if(SerialBuffer[CursorPosion] == 0)break;
+ 185   4                SendStr("\033[");
+ 186   4                SendUInt(strlen(SerialBuffer)-CursorPosion);
+ 187   4                SendStr("C");
+ 188   4                CursorPosion=strlen(SerialBuffer);
+ 189   4                break;
+ 190   4              }
+ 191   3            }
+ 192   2            break;
+ 193   2          default:
+ 194   2            break;
+ 195   2        }
+ 196   1        // */
+ 197   1        VTCursorPosion=0;
+ 198   1        memset(VTCmdBuffer,'\0',MAX_VT_COMMAND_BUFFER_SIZE);
+ 199   1      }
+ 200          
+ 201          /* 普通字符键盘输入 */
+ 202          void CharacterInput(unsigned char sbuftemp)
+ 203          {
+ 204   1        unsigned char temp=0;
+ 205   1        int i;
+ 206   1        switch(sbuftemp)
+ 207   1        {
+ 208   2        case 0x1B://ESC
+ 209   2          VTControlModeFlag=1;
+ 210   2          break;
+ 211   2        case 0x08://删除
+ 212   2        case 0x06:
+ 213   2        case 0x07:
+ 214   2        case 0x7E:
+ 215   2        case 0x7F:
+ 216   2          if(CursorPosion <= 0)break;
+ 217   2          CursorPosion--;
+ 218   2          //首先左移一下游标,然后记录下位置
+ 219   2          SendByte(0x08);
+ 220   2          SendStr(SAVECURSOR);
+ 221   2          //在内存里输出光标后的内容,此时会覆盖光标里的字,相当于原地删除了
+ 222   2          SendStr(&SerialBuffer[CursorPosion+1]);
+ 223   2          SendByte(0x20);//在末尾输出个空格,覆盖末尾的字留下的残影.
+ 224   2          SendStr(RESTORECURSOR);//恢复光标位置
+ 225   2          //在内存里把光标后面的内容全部往前移一格(包括末尾的\0)
+ 226   2          for (i = CursorPosion; i < strlen(SerialBuffer); i++)SerialBuffer[i]=SerialBuffer[i+1];
+ 227   2          break;
+ 228   2        case '\r':
+ 229   2        case '\n':
+ 230   2        case '\0':
+ 231   2          SendByte('\r');
+ 232   2          SendByte('\n');
+ 233   2          ExecCommandFlag = 1;
+ 234   2          break;
+ 235   2        case '\t':
+ 236   2          break;
+ 237   2        default:
+ 238   2          //如果用户输入过长的内容,清空缓冲区并提示
+ 239   2          if(strlen(SerialBuffer)+1 >= MAX_SERIAL_BUFFER_SIZE)
+ 240   2          {
+C51 COMPILER V9.00   TERMINAL                                                              09/16/2019 22:21:39 PAGE 5   
+
+ 241   3            CursorPosion = 0;
+ 242   3            memset(SerialBuffer,'\0',MAX_SERIAL_BUFFER_SIZE);
+ 243   3            SendStr2("\r\n 警告:您输入的内容过长!\r\n\r\n",F_RED,DEFAULT_B_COLOR);
+ 244   3            SendStr2(PromptBuffer,PROMPT_F_COLOR,DEFAULT_B_COLOR);
+ 245   3            break;
+ 246   3          }
+ 247   2          //把当前位置以及之后的内容全部后移,然后当前位置的字符填入用户的按键
+ 248   2          for (i = strlen(SerialBuffer)-1; i >= CursorPosion; i--)SerialBuffer[i+1]=SerialBuffer[i];
+ 249   2          SerialBuffer[CursorPosion] = sbuftemp;
+ 250   2          //将以上操作,输出到界面上
+ 251   2          SendByte(sbuftemp);
+ 252   2          SendStr(SAVECURSOR);
+ 253   2          SendStr(&SerialBuffer[CursorPosion+1]);
+ 254   2          SendStr(RESTORECURSOR);
+ 255   2          CursorPosion++;
+ 256   2          break;
+ 257   2        }
+ 258   1      }
+ 259          
+ 260          //串口事件
+ 261          void SerialInterrupt(void)//interrupt 4 using 3
+ 262          {
+ 263   1        char sbuftemp;
+ 264   1        if(!RI)return;
+ 265   1        sbuftemp = SBUF;
+ 266   1        RI = 0;
+ 267   1        if(VTControlModeFlag)
+ 268   1        {
+ 269   2          VTInput(sbuftemp);
+ 270   2        }else
+ 271   1        {
+ 272   2          CharacterInput(sbuftemp);
+ 273   2        }
+ 274   1      }
+ 275          
+ 276          /* 解析参数 命令缓冲区 p参数数量 参数数组 */
+ 277          void ParseArgs(char *argstr,char *argc_p,char **argv, char **resid)
+ 278          {
+ 279   1        char argc = 0;
+ 280   1        char c;
+ 281   1        //暂存状态,用于转义后恢复
+ 282   1        PARSESTATE stackedstate;
+ 283   1        //上一个符号的状态
+ 284   1        PARSESTATE laststate = PS_WHITESPACE;
+ 285   1      
+ 286   1        //循环从缓冲区读取字符
+ 287   1        /*
+ 288   1          我们把解析模式分为:普通模式:空白  普通模式:输入中  字符串模式(包含在2个�
+             -�引号之间)  转义模式(在"\"后面的1个符号)
+ 289   1        */
+ 290   1        while ((c = *argstr) != 0)
+ 291   1        {
+ 292   2          //新状态(当前符号会按照新状态处理)
+ 293   2          PARSESTATE newstate;
+ 294   2          //如果遇到分号.并且处于普通模式,则结束解析
+ 295   2          if (c == ';' && laststate != PS_STRING && laststate != PS_ESCAPE)break;
+ 296   2          //接下来会根据不同状态,对c的内容进行处理
+ 297   2          if (laststate == PS_ESCAPE)//如果上一个符号是转义转态,将暂存的状态作为新状态,因�
+             -��转义状态只对单个字符生效
+ 298   2          {
+ 299   3            newstate = stackedstate;
+ 300   3          }
+C51 COMPILER V9.00   TERMINAL                                                              09/16/2019 22:21:39 PAGE 6   
+
+ 301   2          else if (laststate == PS_STRING)//如果上一个符号是字符串状态
+ 302   2          {
+ 303   3            if (c == '"')//遇到双引号,将新状态设为普通空白,并分割内容
+ 304   3            {
+ 305   4              newstate = PS_WHITESPACE;
+ 306   4              *argstr = 0;
+ 307   4            }
+ 308   3            else//如果遇到其他符号,则下一个字还是字符串状态
+ 309   3            {
+ 310   4              newstate = PS_STRING;
+ 311   4            }
+ 312   3          }
+ 313   2          else if ((c == ' ') || (c == '\t'))//如果遇到空格或者\t 则分割,并且将新状态改为普�
+             -�空白
+ 314   2          {
+ 315   3            *argstr = 0;
+ 316   3            newstate = PS_WHITESPACE;
+ 317   3          }
+ 318   2          else if (c == '"')//如果遇到双引号.则新状态改为字符串
+ 319   2          {
+ 320   3            newstate = PS_STRING;
+ 321   3            *argstr++ = 0;//此处把双引号改为\0 并将地址放进argv
+ 322   3            argv[argc++] = argstr;
+ 323   3          }
+ 324   2          else if (c == '\\')//遇到斜杠,进入转义模式(进入前,保存旧状态)
+ 325   2          {
+ 326   3            stackedstate = laststate;
+ 327   3            newstate = PS_ESCAPE;
+ 328   3          }
+ 329   2          else //普通模式
+ 330   2          {
+ 331   3            if (laststate == PS_WHITESPACE) argv[argc++] = argstr;
+ 332   3            newstate = PS_TOKEN;
+ 333   3          }
+ 334   2          //将新状态,转移到旧状态,并进入下一个字符
+ 335   2          laststate = newstate;
+ 336   2          argstr++;
+ 337   2        }
+ 338   1      
+ 339   1        argv[argc] = NULL;
+ 340   1        if (argc_p != NULL)*argc_p = argc;
+ 341   1        if (*argstr == ';') *argstr++ = '\0';
+ 342   1        *resid = argstr;
+ 343   1      }
+ 344          
+ 345          void ExecCommand(char *buf)
+ 346          {
+ 347   1        char argc,*argv[8],*resid,i;
+ 348   1        COMMAND *Command = 0;
+ 349   1      
+ 350   1        while(*buf)
+ 351   1        {
+ 352   2          //清空之前的argv
+ 353   2          memset(argv,0,sizeof(argv));
+ 354   2          //解析参数
+ 355   2          ParseArgs(buf, &argc, argv, &resid);
+ 356   2          //把命令第一节转为小写
+ 357   2          toLower(argv[0]);
+ 358   2      
+ 359   2          if(argc <=0)
+ 360   2          {
+ 361   3            buf = resid;
+C51 COMPILER V9.00   TERMINAL                                                              09/16/2019 22:21:39 PAGE 7   
+
+ 362   3            continue;
+ 363   3          }
+ 364   2          for(i = 0; CommandList[i].CommandName!=NULL; i++)
+ 365   2          {
+ 366   3            Command = &CommandList[i];
+ 367   3            if(strncmp(Command->CommandName,argv[0],strlen(argv[0])) == 0)break;
+ 368   3            Command = 0;
+ 369   3          }
+ 370   2          if(Command == 0)
+ 371   2          {
+ 372   3            SendStr("'");
+ 373   3            SendStr2(argv[0],F_RED,DEFAULT_B_COLOR);
+ 374   3            SendStr("' 不是内部或外部命令，也不是可运行的程序.如果需要帮助请输入");
+ 375   3            SendLine2("'help'\r\n",F_YELLOW,DEFAULT_B_COLOR); 
+ 376   3          }
+ 377   2          else
+ 378   2          {
+ 379   3            Argc=argc;
+ 380   3            Argv=argv;
+ 381   3            Command->CommandFunc();
+ 382   3          }
+ 383   2          buf = resid;
+ 384   2        }
+ 385   1      }
+ 386          
+ 387          void RunTerminal(void)
+ 388          {
+ 389   1        if (RI==1)SerialInterrupt(); 
+ 390   1        if(ExecCommandFlag)
+ 391   1        {
+ 392   2          ExecCommand(SerialBuffer);
+ 393   2          SendStr2(PromptBuffer,PROMPT_F_COLOR,DEFAULT_B_COLOR);
+ 394   2          memset(SerialBuffer,'\0',MAX_SERIAL_BUFFER_SIZE);
+ 395   2          CursorPosion = 0;
+ 396   2          VTCursorPosion = 0;
+ 397   2          ExecCommandFlag = 0;
+ 398   2        }
+ 399   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1904    ----
+   CONSTANT SIZE    =    250    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      76
+   IDATA SIZE       =     84    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,59 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: ¦ÌVision V5.28.0.0
+Copyright (C) 2019 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: qe untitled_x6, 4132, LIC=58E56-DGRSV-ZJH6U-S6DN1-ICFL6-NWJQR
+ 
+Tool Versions:
+Toolchain:       PK51 Prof. Developers Kit  Version: 9.00
+Toolchain Path:  D:\Keil_v5\C51\BIN
+C Compiler:      C51.exe V9.00
+Assembler:       A51.exe V8.01
+Linker/Locator:  BL51.exe V6.22
+Library Manager: LIB51.exe V4.24
+Hex Converter:   OH51.exe V2.6
+CPU DLL:         S8051.DLL V3.72
+Dialog DLL:      DP51.DLL V2.59 
+<h2>Project:</h2>
+C:\CODE\c_code\µ¥Æ¬»ú\keil_project\terminal\terminal.uvproj
+Project File Date:  09/16/2019
+
+<h2>Output:</h2>
+Rebuild target 'Target 1'
+assembling STARTUP.A51...
+compiling Commands.c...
+compiling Helper.c...
+compiling main.c...
+compiling Terminal.c...
+compiling Uart.c...
+linking...
+*** WARNING L13: RECURSIVE CALL TO SEGMENT
+    SEGMENT: ?CO?COMMANDS
+    CALLER:  ?PR?HELP?COMMANDS
+*** WARNING L13: RECURSIVE CALL TO SEGMENT
+    SEGMENT: ?CO?COMMANDS
+    CALLER:  ?PR?CLEAR?COMMANDS
+*** WARNING L13: RECURSIVE CALL TO SEGMENT
+    SEGMENT: ?CO?COMMANDS
+    CALLER:  ?PR?REBOOT?COMMANDS
+*** WARNING L13: RECURSIVE CALL TO SEGMENT
+    SEGMENT: ?CO?COMMANDS
+    CALLER:  ?PR?SETBIT?COMMANDS
+*** WARNING L13: RECURSIVE CALL TO SEGMENT
+    SEGMENT: ?CO?COMMANDS
+    CALLER:  ?PR?RESETBIT?COMMANDS
+*** WARNING L13: RECURSIVE CALL TO SEGMENT
+    SEGMENT: ?CO?COMMANDS
+    CALLER:  ?PR?GETBIT?COMMANDS
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_SENDHEXSTRING?UART
+Program Size: data=160.0 xdata=0 code=5696
+creating hex file from ".\Objects\terminal"...
+".\Objects\terminal" - 0 Error(s), 7 Warning(s).
+Build Time Elapsed:  00:00:01
+</pre>
+</body>
+</html>
